@@ -1,87 +1,97 @@
-const path = require('path')
-const WebSocket = require('ws')
-const protocol = require('./protocol')
-const winston = require('winston')
-const readline = require('readline').createInterface({
-  input: process.stdin,
-  output: process.stdout
-})
-const logger = winston.createLogger({
-  transports: [
-    new winston.transports.Console(),
-    new winston.transports.File({ filename: `${path.resolve(__dirname, '../logs/')}client.error.log`, level: 'error' }),
-    new winston.transports.File({ filename: `${path.resolve(__dirname, '../logs/')}client.combined.log` })
-  ]
-})
+import * as path from 'path'
+import * as WebSocket from 'ws'
+import { payloadType, serialize, deserialize, builder, WelcomeServer, MessageServer } from './protocol'
+import * as winston from 'winston'
+import * as readline from 'readline'
 
-const SERVER = 'ws://' + process.env.WS_ADDR
-
-const hbPingHandler = (hbTimeout) => {
-  logger.verbose('Sending ping')
-  clearTimeout(this.hbTimeout)
-  this.hbTimeout = setTimeout(() => {
-    logger.verbose(`Lost connection with server`)
-    this.terminate()
-  }, hbTimeout)
+interface ClientState {
+  uid: string,
+  uname: string,
+  hbTimeout: number
 }
 
-const init = () => {
-  logger.verbose(`Connecting to: ${SERVER}`)
-  const client = new WebSocket(SERVER)
-  let state = {
-    uname: '',
-    uid: '',
-    hbTimeout: 0
+class Client {
+  private readonly SERVER_URL: string
+  private readonly WS: WebSocket
+  private readonly LOGGER: winston.Logger
+  private readonly CLI: readline.Interface
+  private state: ClientState
+  private heartbeatTimeout: NodeJS.Timer
+
+  constructor () {
+    this.SERVER_URL = 'ws://' + process.env.WS_ADDR
+    this.WS = new WebSocket(this.SERVER_URL)
+    this.CLI = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout
+    })
+    this.LOGGER = winston.createLogger({
+      transports: [
+        new winston.transports.Console(),
+        new winston.transports.File({ filename: `${path.resolve(__dirname, '../logs/')}client.error.log`, level: 'error' }),
+        new winston.transports.File({ filename: `${path.resolve(__dirname, '../logs/')}client.combined.log` })
+      ]
+    })
   }
 
-  client.on('open', () => {
-    readline.question(`What's your user name? `, (uname) => {
-      state.uname = uname
-      client.send(protocol.serialize(protocol.builder.client.welcome({ uname })))
+  private checkHeartbeat (): void {
+    this.LOGGER.verbose('Sending ping')
+    clearTimeout(this.heartbeatTimeout)
+    this.heartbeatTimeout = setTimeout(() => {
+      this.LOGGER.verbose(`Lost connection with server`)
+      this.WS.terminate()
+    }, this.state.hbTimeout)
+  }
+  private userRegister (): void {
+    this.CLI.question(`What's your user name? `, (uname) => {
+      this.state.uname = uname
+      this.WS.send(serialize(builder.client.welcome({ uname })))
     })
-  })
+  }
 
-  client.on('message', (data) => {
-    const parsed = protocol.deserialize(data)
-    switch (parsed.type) {
-      case protocol.TYPES.WELCOME:
-        const { uid, uname, hbTimeout } = parsed
-        if (uname !== state.uname) {
-          console.error('Server Parameters not set')
-          return
-        }
-        state.hbTimeout = hbTimeout + 1000
-        state.uid = uid
-        logger.verbose(`Connection with server successful`)
+  run ():void {
+    this.LOGGER.verbose(`Connecting to: ${this.SERVER_URL}`)
+    this.WS.on('open', this.userRegister)
 
-        client.hbPingHandler = hbPingHandler.bind(client)
-        client.hbPingHandler(state.hbTimeout)
-        client.on('ping', () => {
-          client.hbPingHandler(state.hbTimeout)
-        })
+    this.WS.on('message', (data: string) => {
+      const parsed: any = deserialize(data)
+      switch (parsed.type) {
+        case payloadType.WELCOME:
+          const { uid, uname, hbTimeout }: WelcomeServer = parsed
+          if (uname !== this.state.uname) {
+            console.error('Server Parameters not set')
+            return
+          }
+          this.state.hbTimeout = hbTimeout + 1000
+          this.state.uid = uid
+          this.LOGGER.verbose(`Connection with server successful`)
 
-        console.log(`Connected!`)
-        readline.on('line', line => {
-          if (line.trim().length === 0) return
-          client.send(protocol.serialize(protocol.builder.client.message({
-            uid: state.uid,
-            createdAt: Date.now(),
-            text: protocol.serialize(line)
-          })))
-        })
-        break
-      case protocol.TYPES.TO_CLIENT:
-        const { author, createdAt, text } = parsed
-        console.log(`[${new Date(createdAt).toLocaleString()}] ${author}: ${text}`)
-        break
-    }
-  })
+          this.checkHeartbeat()
+          this.WS.on('ping', this.checkHeartbeat)
 
-  client.on('close', () => {
-    logger.verbose(`Connection closed with server`)
-    readline.close()
-    clearTimeout(this.hbTimeout)
-  })
+          console.log(`Connected!`)
+          this.WS.on('line', (line: string) => {
+            if (line.trim().length === 0) return
+            this.WS.send(serialize(builder.client.message({
+              uid: this.state.uid,
+              createdAt: Date.now(),
+              text: line
+            })))
+          })
+          break
+        case payloadType.TO_CLIENT:
+          const { author, createdAt, text }: MessageServer = parsed
+          console.log(`[${new Date(createdAt).toLocaleString()}] ${author}: ${text}`)
+          break
+      }
+    })
+
+    this.WS.on('close', () => {
+      this.LOGGER.verbose(`Connection closed with server`)
+      this.CLI.close()
+      clearTimeout(this.state.hbTimeout)
+    })
+  }
 }
 
-init()
+new Client().run()

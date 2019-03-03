@@ -1,62 +1,94 @@
-const TYPES = {
-  WELCOME: 'WELCOME',
-  TO_SERVER: 'TO_SERVER',
-  TO_CLIENT: 'TO_CLIENT'
+export enum payloadType {
+  WELCOME = 'welcome',
+  TO_SERVER = 'to_server',
+  TO_CLIENT = 'to_client',
 }
-const serialize = x => {
+
+export const serialize = (x: object):string => {
   try {
     return JSON.stringify(x)
   } catch (e) {
     console.error(e)
   }
 }
-const deserialize = x => {
+export const deserialize = (x: string):object => {
   try {
     return JSON.parse(x)
   } catch (e) {
     console.error(e)
   }
 }
-const builder = {
+
+
+/* Message structure sent during initial handsahking */
+export interface WelcomeClient {
+  uname: string
+}
+
+export interface WelcomeServer extends WelcomeClient {
+  uid: string,
+  hbTimeout: number
+}
+
+/* Message structure sent in normal operating */
+interface Message {
+  createdAt: number,
+  text: string
+}
+
+export interface MessageServer extends Message {
+  author: string
+}
+
+export interface MessageClient extends Message {
+  uid: string
+}
+
+
+interface Payload {
+  type: payloadType
+}
+interface WelcomeClientPayload extends Payload, WelcomeClient {}
+interface WelcomeServerPayload extends Payload, WelcomeServer {}
+interface MessageClientPayload extends Payload, MessageClient {}
+interface MessageServerPayload extends Payload, MessageServer {}
+
+
+
+
+export const builder = {
   client: {
-    welcome: ({ uname = '' }) => {
+    welcome: ({ uname }: WelcomeClient ): WelcomeClientPayload => {
       return {
-        type: TYPES.WELCOME,
+        type: payloadType.WELCOME,
         uname
       }
     },
-    message: ({ author, createdAt, text = '' }) => {
+    message: ({ uid, createdAt, text = '' }: MessageClient ): MessageClientPayload => {
       return {
-        type: TYPES.TO_SERVER,
-        author,
+        type: payloadType.TO_SERVER,
+        uid,
         createdAt,
         text
       }
     }
   },
   server: {
-    welcome: ({ uname, uid, hbTimeout }) => {
+    welcome: ({ uname, uid, hbTimeout }: WelcomeServer): WelcomeServerPayload => {
       return {
-        type: TYPES.WELCOME,
+        type: payloadType.WELCOME,
         uname,
         uid,
         hbTimeout
       }
     },
-    message: ({ author, createdAt, text = '' }) => {
+    message: ({ author, createdAt, text = '' }: MessageServer ): MessageServerPayload => {
       return {
-        type: TYPES.TO_CLIENT,
+        type: payloadType.TO_CLIENT,
         author,
         createdAt,
         text
       }
     }
   }
-
-}
-module.exports = {
-  TYPES,
-  builder,
-  serialize,
-  deserialize
 }

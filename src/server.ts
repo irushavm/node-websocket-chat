@@ -1,8 +1,8 @@
-const http = require('http')
-const crypto = require('crypto')
-const WebSocket = require('ws')
-const protocol = require('./protocol')
-const winston = require('winston')
+import * as http from 'http'
+import { randomBytes } from 'crypto'
+import * as WebSocket from 'ws'
+import protocol from './protocol'
+import * as winston from 'winston'
 const PORT = process.env.PORT || 5005
 const HEARTBEAT_DELAY = 5 * 1000
 
@@ -54,7 +54,7 @@ wss.on('connection', (ws, req) => {
           return
         }
         ws.uname = parsed.uname
-        ws.uid = crypto.randomBytes(16).toString('hex')
+        ws.uid = randomBytes(16).toString('hex')
         ws.send(protocol.serialize(protocol.builder.server.welcome({
           uname: ws.uname,
           uid: ws.uid,

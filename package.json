@@ -19,6 +19,7 @@
   },
   "homepage": "https://github.com/irushavm/node-websocket-chat#readme",
   "dependencies": {
+    "@types/ws": "^6.0.1",
     "typescript": "^3.3.3333",
     "winston": "^3.2.1",
     "ws": "^6.1.4"
@@ -28,6 +29,7 @@
     "utf-8-validate": "^5.0.2"
   },
   "devDependencies": {
+    "@typescript-eslint/parser": "^1.4.2",
     "eslint": "^5.15.0",
     "eslint-config-standard": "^12.0.0",
     "eslint-plugin-import": "^2.16.0",

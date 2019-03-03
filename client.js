@@ -8,8 +8,8 @@ const readline = require('readline').createInterface({
 const logger = winston.createLogger({
     transports: [
       new winston.transports.Console(),
-      new winston.transports.File({ filename: 'client-error.log', level: 'error' }),
-      new winston.transports.File({ filename: 'client-combined.log' }),
+      new winston.transports.File({ filename: 'logs/client-error.log', level: 'error' }),
+      new winston.transports.File({ filename: 'logs/client-combined.log' }),
     ]
   });
   
@@ -44,7 +44,6 @@ const init = () => {
     
     client.on('message', (data) => {
         const parsed = interface.deserialize(data)
-        // console.error(`New message ${JSON.stringify(parsed)}`);
         switch(parsed.type) {
             case interface.TYPES.WELCOME:
             if(parsed.uname !== state.uname) {
@@ -61,13 +60,14 @@ const init = () => {
                 client.process_heartbeat(state.heartbeatTimeout)
             })
             
+            console.log(`Connected!`);
             readline.on('line', line => {
                 if(line.trim().length === 0) return;
                 client.send(interface.serialize(interface.builder.client.message({ uid:state.uid, text: interface.serialize(line)})))
             })
             break;
             case interface.TYPES.TO_CLIENT:
-            console.log(parsed.text);
+            console.log(parsed.text)
             break;
         }
     })

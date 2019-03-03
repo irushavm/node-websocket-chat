@@ -9,8 +9,8 @@ const HEARTBEAT_DELAY = 30 * 1000
 const logger = winston.createLogger({
   transports: [
     new winston.transports.Console(),
-    new winston.transports.File({ filename: 'server-error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'server-combined.log' }),
+    new winston.transports.File({ filename: 'logs/server-error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'logs/server-combined.log' }),
   ]
 });
 
@@ -66,7 +66,7 @@ wss.on('connection', (ws, req) => {
       wss.clients.forEach( client => {
         if (client.readyState === WebSocket.OPEN) {
           client.send(interface.serialize(interface.builder.server.message({
-            text: `[${new Date(Date.now()).toLocaleString()}] ${client.uname}: ${parsed.text.replace(/\"/g, '')}`
+            text: `[${new Date(Date.now()).toLocaleString()}] ${ws.uname}: ${parsed.text.replace(/\"/g, '')}`
           })))
         }
       })

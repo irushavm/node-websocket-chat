@@ -1,3 +1,4 @@
+const path = require('path')
 const WebSocket = require('ws')
 const protocol = require('./protocol')
 const winston = require('winston')
@@ -8,8 +9,8 @@ const readline = require('readline').createInterface({
 const logger = winston.createLogger({
   transports: [
     new winston.transports.Console(),
-    new winston.transports.File({ filename: 'logs/client.error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'logs/client.combined.log' })
+    new winston.transports.File({ filename: `${path.resolve(__dirname, '../logs/')}client.error.log`, level: 'error' }),
+    new winston.transports.File({ filename: `${path.resolve(__dirname, '../logs/')}client.combined.log` })
   ]
 })
 

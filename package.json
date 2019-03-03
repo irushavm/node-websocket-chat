@@ -4,6 +4,7 @@
   "description": "A trial project to learn about Web Sockets",
   "main": "index.js",
   "scripts": {
+    "tsc": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint": "eslint --fix ./"
   },
@@ -18,6 +19,7 @@
   },
   "homepage": "https://github.com/irushavm/node-websocket-chat#readme",
   "dependencies": {
+    "typescript": "^3.3.3333",
     "winston": "^3.2.1",
     "ws": "^6.1.4"
   },

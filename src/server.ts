@@ -9,8 +9,8 @@ const HEARTBEAT_DELAY = 5 * 1000
 const logger = winston.createLogger({
   transports: [
     new winston.transports.Console(),
-    new winston.transports.File({ filename: 'logs/server.error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'logs/server.combined.log' })
+    new winston.transports.File({ filename: `${path.resolve(__dirname, '../logs/')}server.error.log`, level: 'error' }),
+    new winston.transports.File({ filename: `${path.resolve(__dirname, '../logs/')}server.combined.log` })
   ]
 })
 

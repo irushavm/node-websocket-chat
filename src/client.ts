@@ -4,6 +4,8 @@ import { payloadType, serialize, deserialize, builder, WelcomeToClient, MessageT
 import * as winston from 'winston'
 import * as readline from 'readline'
 
+const PROMPT = '> '
+
 interface ClientState {
   uid: string,
   uname: string,
@@ -17,7 +19,7 @@ class WSClient {
   private readonly CLI: readline.Interface
   private state: ClientState
   private heartbeatTimeout: any
-  
+
   constructor () {
     this.SERVER_URL = 'ws://' + process.env.WS_ADDR
     this.WS = new WebSocket(this.SERVER_URL)
@@ -39,7 +41,7 @@ class WSClient {
     this.onMessageWelcome = this.onMessageWelcome.bind(this)
     this.checkHeartbeat = this.checkHeartbeat.bind(this)
   }
-  
+
   private checkHeartbeat (): void {
     this.LOGGER.verbose('Sending ping')
     clearTimeout(this.heartbeatTimeout)
@@ -57,7 +59,10 @@ class WSClient {
   }
   private onMessageToClient(parsed: any): void {
     const { author, createdAt, text }: MessageToClient = parsed
-    console.log(`[${new Date(createdAt).toLocaleString()}] ${author}: ${text}`)
+    readline.clearLine(process.stdout, 0);
+    readline.cursorTo(process.stdout, 0);
+    console.log(`[${new Date(createdAt).toLocaleString()}] ${author}: ${text}\n`)
+    process.stdout.write(PROMPT)
   }
   private onMessageWelcome(parsed: any): void {
     const { uid, uname, hbTimeout }: WelcomeToClient = parsed
@@ -68,11 +73,11 @@ class WSClient {
     this.state.hbTimeout = hbTimeout + 1000
     this.state.uid = uid
     this.LOGGER.verbose(`Connection with server successful`)
-    
+
     this.checkHeartbeat()
     this.WS.on('ping', this.checkHeartbeat)
-    
-    console.log(`Connected!`)
+
+    console.log(`Connected!\n${PROMPT}`)
     this.CLI.on('line', (line: string) => {
       if (line.trim().length === 0) return
       this.WS.send(serialize(builder.toServer.message({
@@ -89,7 +94,7 @@ class WSClient {
   }
   run ():void {
     this.WS.on('open', this.onOpen)
-  
+
     this.WS.on('message', (data: string) => {
       const parsed: any = deserialize(data)
       switch (parsed.type) {
@@ -101,7 +106,7 @@ class WSClient {
         break
       }
     })
-    
+
     this.WS.on('close', this.onClose.bind(this))
   }
 }

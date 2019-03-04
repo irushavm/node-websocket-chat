@@ -83,7 +83,7 @@ WebSocket.prototype['setupMessageHandlers'] = function():void {
   this.on('message', ((data:string) => {
     this.LOGGER.verbose(`Received: ${data}`)
     const parsed: any = deserialize(data)
-    
+
     switch (parsed.type) {
       case payloadType.WELCOME:
       this.onMessageWelcome(parsed)
@@ -100,7 +100,7 @@ class WSServer {
   private readonly WSS: WebSocket.Server
   public readonly LOGGER: winston.Logger
   public readonly HEARTBEAT_DELAY = 5 * 1000
-  
+
   constructor(server: http.Server, port: number) {
     this.WSS = new WebSocket.Server({ server })
     this.LOGGER = winston.createLogger({
@@ -112,9 +112,9 @@ class WSServer {
     })
     server.listen(port, () => {
       this.LOGGER.info(`Server listening at ${port}`)
-    })    
+    })
   }
-  
+
   private setupHeartbeats():void {
     let { clients } = this.WSS
     setInterval(() => {
@@ -124,7 +124,7 @@ class WSServer {
       })
     }, this.HEARTBEAT_DELAY)
   }
-  
+
   public broadcast (sendBody: object):void {
     let { clients } = this.WSS
     clients.forEach((client: WebSocket) => {
@@ -133,7 +133,7 @@ class WSServer {
       }
     })
   }
-  
+
   public run():void {
     this.setupHeartbeats()
     this.WSS.on('connection', (ws: WebSocket, req: http.IncomingMessage) => {

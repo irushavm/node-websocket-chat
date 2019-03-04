@@ -1,3 +1,4 @@
+
 export enum payloadType {
   WELCOME = 'welcome',
   TO_SERVER = 'to_server',
@@ -21,11 +22,11 @@ export const deserialize = (x: string):object => {
 
 
 /* Message structure sent during initial handsahking */
-export interface WelcomeClient {
+export interface WelcomeToServer {
   uname: string
 }
 
-export interface WelcomeServer extends WelcomeClient {
+export interface WelcomeToClient extends WelcomeToServer {
   uid: string,
   hbTimeout: number
 }
@@ -36,11 +37,11 @@ interface Message {
   text: string
 }
 
-export interface MessageServer extends Message {
+export interface MessageToClient extends Message {
   author: string
 }
 
-export interface MessageClient extends Message {
+export interface MessageToServer extends Message {
   uid: string
 }
 
@@ -48,47 +49,39 @@ export interface MessageClient extends Message {
 interface Payload {
   type: payloadType
 }
-interface WelcomeClientPayload extends Payload, WelcomeClient {}
-interface WelcomeServerPayload extends Payload, WelcomeServer {}
-interface MessageClientPayload extends Payload, MessageClient {}
-interface MessageServerPayload extends Payload, MessageServer {}
+interface WelcomeToServerPayload extends Payload, WelcomeToServer {}
+interface WelcomeToClientPayload extends Payload, WelcomeToClient {}
+interface MessageToServerPayload extends Payload, MessageToServer {}
+interface MessageToClientPayload extends Payload, MessageToClient {}
 
 
 
 
 export const builder = {
-  client: {
-    welcome: ({ uname }: WelcomeClient ): WelcomeClientPayload => {
-      return {
-        type: payloadType.WELCOME,
-        uname
-      }
-    },
-    message: ({ uid, createdAt, text = '' }: MessageClient ): MessageClientPayload => {
-      return {
-        type: payloadType.TO_SERVER,
-        uid,
-        createdAt,
-        text
-      }
-    }
+  toServer: {
+    welcome: ({ uname }: WelcomeToServer ): WelcomeToServerPayload => ({
+      type: payloadType.WELCOME,
+      uname
+    }),
+    message: ({ uid, createdAt, text = '' }: MessageToServer ): MessageToServerPayload => ({
+      type: payloadType.TO_SERVER,
+      uid,
+      createdAt,
+      text
+    })
   },
-  server: {
-    welcome: ({ uname, uid, hbTimeout }: WelcomeServer): WelcomeServerPayload => {
-      return {
-        type: payloadType.WELCOME,
-        uname,
-        uid,
-        hbTimeout
-      }
-    },
-    message: ({ author, createdAt, text = '' }: MessageServer ): MessageServerPayload => {
-      return {
-        type: payloadType.TO_CLIENT,
-        author,
-        createdAt,
-        text
-      }
-    }
+  toClient: {
+    welcome: ({ uname, uid, hbTimeout }: WelcomeToClient): WelcomeToClientPayload => ({
+      type: payloadType.WELCOME,
+      uname,
+      uid,
+      hbTimeout
+    }),
+    message: ({ author, createdAt, text = '' }: MessageToClient ): MessageToClientPayload => ({
+      type: payloadType.TO_CLIENT,
+      author,
+      createdAt,
+      text
+    })
   }
 }

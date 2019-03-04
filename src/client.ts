@@ -1,26 +1,27 @@
 import * as path from 'path'
 import * as WebSocket from 'ws'
-import { payloadType, serialize, deserialize, builder, WelcomeServer, MessageServer } from './protocol'
+import { payloadType, serialize, deserialize, builder, WelcomeToClient, MessageToClient } from './protocol'
 import * as winston from 'winston'
 import * as readline from 'readline'
 
 interface ClientState {
   uid: string,
   uname: string,
-  hbTimeout: number
+  hbTimeout: any
 }
 
-class Client {
+class WSClient {
   private readonly SERVER_URL: string
   private readonly WS: WebSocket
   private readonly LOGGER: winston.Logger
   private readonly CLI: readline.Interface
   private state: ClientState
-  private heartbeatTimeout: NodeJS.Timer
-
+  private heartbeatTimeout: any
+  
   constructor () {
     this.SERVER_URL = 'ws://' + process.env.WS_ADDR
     this.WS = new WebSocket(this.SERVER_URL)
+    this.state = {} as ClientState
     this.CLI = readline.createInterface({
       input: process.stdin,
       output: process.stdout
@@ -32,8 +33,13 @@ class Client {
         new winston.transports.File({ filename: `${path.resolve(__dirname, '../logs/')}client.combined.log` })
       ]
     })
+    this.onOpen = this.onOpen.bind(this)
+    this.onClose = this.onClose.bind(this)
+    this.onMessageToClient = this.onMessageToClient.bind(this)
+    this.onMessageWelcome = this.onMessageWelcome.bind(this)
+    this.checkHeartbeat = this.checkHeartbeat.bind(this)
   }
-
+  
   private checkHeartbeat (): void {
     this.LOGGER.verbose('Sending ping')
     clearTimeout(this.heartbeatTimeout)
@@ -42,56 +48,62 @@ class Client {
       this.WS.terminate()
     }, this.state.hbTimeout)
   }
-  private userRegister (): void {
+  private onOpen (): void {
+    this.LOGGER.verbose(`Connected to: ${this.SERVER_URL}`)
     this.CLI.question(`What's your user name? `, (uname) => {
       this.state.uname = uname
-      this.WS.send(serialize(builder.client.welcome({ uname })))
+      this.WS.send(serialize(builder.toServer.welcome({ uname })))
     })
   }
-
+  private onMessageToClient(parsed: any): void {
+    const { author, createdAt, text }: MessageToClient = parsed
+    console.log(`[${new Date(createdAt).toLocaleString()}] ${author}: ${text}`)
+  }
+  private onMessageWelcome(parsed: any): void {
+    const { uid, uname, hbTimeout }: WelcomeToClient = parsed
+    if (uname !== this.state.uname) {
+      console.error('Server Parameters not set')
+      return
+    }
+    this.state.hbTimeout = hbTimeout + 1000
+    this.state.uid = uid
+    this.LOGGER.verbose(`Connection with server successful`)
+    
+    this.checkHeartbeat()
+    this.WS.on('ping', this.checkHeartbeat)
+    
+    console.log(`Connected!`)
+    this.CLI.on('line', (line: string) => {
+      if (line.trim().length === 0) return
+      this.WS.send(serialize(builder.toServer.message({
+        uid: this.state.uid,
+        createdAt: Date.now(),
+        text: line
+      })))
+    })
+  }
+  onClose():void {
+    this.LOGGER.verbose(`Connection closed with server`)
+    this.CLI.close()
+    clearTimeout(this.state.hbTimeout)
+  }
   run ():void {
-    this.LOGGER.verbose(`Connecting to: ${this.SERVER_URL}`)
-    this.WS.on('open', this.userRegister)
-
+    this.WS.on('open', this.onOpen)
+  
     this.WS.on('message', (data: string) => {
       const parsed: any = deserialize(data)
       switch (parsed.type) {
         case payloadType.WELCOME:
-          const { uid, uname, hbTimeout }: WelcomeServer = parsed
-          if (uname !== this.state.uname) {
-            console.error('Server Parameters not set')
-            return
-          }
-          this.state.hbTimeout = hbTimeout + 1000
-          this.state.uid = uid
-          this.LOGGER.verbose(`Connection with server successful`)
-
-          this.checkHeartbeat()
-          this.WS.on('ping', this.checkHeartbeat)
-
-          console.log(`Connected!`)
-          this.WS.on('line', (line: string) => {
-            if (line.trim().length === 0) return
-            this.WS.send(serialize(builder.client.message({
-              uid: this.state.uid,
-              createdAt: Date.now(),
-              text: line
-            })))
-          })
-          break
+        this.onMessageWelcome(parsed)
+        break
         case payloadType.TO_CLIENT:
-          const { author, createdAt, text }: MessageServer = parsed
-          console.log(`[${new Date(createdAt).toLocaleString()}] ${author}: ${text}`)
-          break
+        this.onMessageToClient(parsed)
+        break
       }
     })
-
-    this.WS.on('close', () => {
-      this.LOGGER.verbose(`Connection closed with server`)
-      this.CLI.close()
-      clearTimeout(this.state.hbTimeout)
-    })
+    
+    this.WS.on('close', this.onClose.bind(this))
   }
 }
 
-new Client().run()
+new WSClient().run()

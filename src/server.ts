@@ -42,22 +42,22 @@ WebSocket.prototype['initState'] = function (wss: WSServer, logger: winston.Logg
 }
 WebSocket.prototype['setupHeartbeatHandler'] = function(): void{
   this.on('pong', () => {
-    this.LOGGER.info(`Received pong from ${this.state.ip}`)
+    this.LOGGER.info(`${new Date()}: Received pong from ${this.state.ip}`)
     this.state.connectionAlive = true
   })
 }
 WebSocket.prototype['checkHeartbeatReturn'] = function(): void {
   if (this.state && this.state.connectionAlive === false) {
-    this.LOGGER.info(`Sending terminate to ${this.state.ip}`)
+    this.LOGGER.info(`${new Date()}: Sending terminate to ${this.state.ip}`)
     return this.terminate()
   }
   this.state.connectionAlive = false
-  this.LOGGER.info(`Sending ping to ${this.state.ip}`)
+  this.LOGGER.info(`${new Date()}: Sending ping to ${this.state.ip}`)
   this.ping()
 }
 WebSocket.prototype['onMessageWelcome'] = function(parsed: WelcomeToServer):void {
   if (parsed.uname === '') {
-    this.LOGGER.error('No Username set')
+    this.LOGGER.error(`${new Date()}: No Username set`)
     return
   }
   this.state.uname = parsed.uname
@@ -81,7 +81,7 @@ WebSocket.prototype['onMessageToServer'] = function(parsed: MessageToServer): vo
 }
 WebSocket.prototype['setupMessageHandlers'] = function():void {
   this.on('message', ((data:string) => {
-    this.LOGGER.verbose(`Received: ${data}`)
+    this.LOGGER.verbose(`${new Date()}: Received: ${data}`)
     const parsed: any = deserialize(data)
 
     switch (parsed.type) {
@@ -111,7 +111,7 @@ class WSServer {
       ]
     })
     server.listen(port, () => {
-      this.LOGGER.info(`Server listening at ${port}`)
+      this.LOGGER.info(`${new Date()}: Server listening at ${port}`)
     })
   }
 
@@ -139,7 +139,7 @@ class WSServer {
     this.WSS.on('connection', (ws: WebSocket, req: http.IncomingMessage) => {
       const wsExt :any = ws as WebSocketExt
       wsExt.initState(this, this.LOGGER, req.connection.remoteAddress, this.HEARTBEAT_DELAY)
-      this.LOGGER.info(`New Connection from. ${wsExt.getState().ip}`)
+      this.LOGGER.info(`${new Date()}: New Connection from ${wsExt.getState().ip}`)
     })
   }
 }

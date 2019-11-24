@@ -43,15 +43,15 @@ class WSClient {
   }
 
   private checkHeartbeat (): void {
-    this.LOGGER.verbose('Sending ping')
+    this.LOGGER.verbose(`${new Date()}: Sending ping`)
     clearTimeout(this.heartbeatTimeout)
     this.heartbeatTimeout = setTimeout(() => {
-      this.LOGGER.verbose(`Lost connection with server`)
+      this.LOGGER.verbose(`${new Date()}: Lost connection with server`)
       this.WS.terminate()
     }, this.state.hbTimeout)
   }
   private onOpen (): void {
-    this.LOGGER.verbose(`Connected to: ${this.SERVER_URL}`)
+    this.LOGGER.verbose(`${new Date()}: Connected to: ${this.SERVER_URL}`)
     this.CLI.question(`What's your user name? `, (uname) => {
       this.state.uname = uname
       this.WS.send(serialize(builder.toServer.welcome({ uname })))
@@ -72,12 +72,12 @@ class WSClient {
     }
     this.state.hbTimeout = hbTimeout + 1000
     this.state.uid = uid
-    this.LOGGER.verbose(`Connection with server successful`)
+    this.LOGGER.verbose(`${new Date()}: Connection with server successful`)
 
     this.checkHeartbeat()
     this.WS.on('ping', this.checkHeartbeat)
 
-    console.log(`Connected!\n${PROMPT}`)
+    console.log(`Connected @ ${new Date()}!\n${PROMPT}`)
     this.CLI.on('line', (line: string) => {
       if (line.trim().length === 0) return
       this.WS.send(serialize(builder.toServer.message({
@@ -88,7 +88,7 @@ class WSClient {
     })
   }
   onClose():void {
-    this.LOGGER.verbose(`Connection closed with server`)
+    this.LOGGER.verbose(`${new Date()}: Connection closed with server`)
     this.CLI.close()
     clearTimeout(this.state.hbTimeout)
   }

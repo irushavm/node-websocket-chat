@@ -26,4 +26,4 @@ This application requires running a server and clients that connect to the serve
 
 3. Build the TS into JS
 
-    `npm run ts`
+    `npm run tsc`
